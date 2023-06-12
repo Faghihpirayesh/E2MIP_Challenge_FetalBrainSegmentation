@@ -1,7 +1,8 @@
 # [E2MIP Challenge](https://e2mip.github.io/), MICCAI 2023
-## Starting point for E2MIP challenge, task 3: Segmentation of an unknown dataset (fetal brain MRI)
+## [Starting point for E2MIP challenge, task 3:](https://e2mip.org/overview/#task-3-segmentation-of-an-unknown-dataset-dataset-2)
+## 2D Segmentation of an unknown dataset (fetal brain MRI)
 
-This repository can be used as a starting point for the E2MIP challenge on the fetal brain MRI dataset.
+This repository can be used as a starting point for the E2MIP challenge on the fetal brain MRI dataset with Monai and PyTorch.
 
 This repository contains:
 1. information about the submission for the task 3 of the challenge
@@ -13,13 +14,17 @@ This repository contains:
 
 * Please provide your complete algorithm for training and predicting in a docker script.
   Further information about how the script should look like will be published here soon.
-  * script takes as input the path to the "training_data" and "testing_data_classification" or "testing_data_segmentation" folders
-  * script outputs predicted segmentation in a newly created folder "testing_data_prediction_classification" or "testing_data_prediction_segmentation". 
+  * script takes as input the path to the "training_data" and "testing_data" folders
+  * script outputs predicted segmentation in a newly created folder "testing_data_prediction". 
 The predictions need to be filed in the folder in a certain folder structure (see 2. Data for Challenge)
 * Besides the performance metric also the energy consumption during training and evaluation is being measured
   and both determine the Challenge ranking.
-### 2. Data for task 3:
+### 2. Data for Challenge, Task 3:
 The folder structure of the training and testing data used for evaluating your code will look like the following:
+
+***important: The data in "training_data" folder are 2D slices with different resolutions and 
+The data in "testing_data" folder are 3D stacks with different resolutions**
+***Your saved predictions in "testing_data_prediction" are also corresponding stack prediction of "testing_data" **
 
 ```bash
 training_data
@@ -56,9 +61,9 @@ The folder structure of the segmentation predictions that your script should cre
 ```bash
 testing_data_prediction
 ├── masks
-│   ├── mask_0000.nii.gz
-│   ├── mask_0001.nii.gz
-│   ├── mask_0003.nii.gz
+│   ├── img_0000_mask.nii.gz
+│   ├── img_0001_mask.nii.gz
+│   ├── img_0003_mask.nii.gz
     ...
 ```
 

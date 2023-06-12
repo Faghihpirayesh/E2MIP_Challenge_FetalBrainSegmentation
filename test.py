@@ -1,70 +1,80 @@
+# modified from "https://github.com/Project-MONAI/tutorials/blob/main/2d_segmentation/torch/unet_evaluation_array.py"
+import logging
 import os
-import time
-import numpy as np
+import sys
+from glob import glob
 
 import torch
-import torchio as tio
 
-from network import UNet
-from dataset_train import preprocess
-from utils import verify_segmentation_dataset
+from monai import config
+from monai.data import ArrayDataset, decollate_batch, DataLoader
+from monai.inferers import SliceInferer
+from monai.metrics import DiceMetric
+from monai.networks.nets import UNet
+from monai.transforms import Activations, AsDiscrete, Compose, LoadImage, SaveImage, ScaleIntensity, ResizeWithPadOrCrop
 
+import warnings
 
-def test_one_volume(model, input_volume_path, device):
-    image = tio.ScalarImage(input_volume_path)
-    prediction = np.zeros(image.shape[1:])
-
-    for test_data_idx in range(image.shape[-1]):
-        img_array = tio.ScalarImage(tensor=image.data[:, :, :, None, test_data_idx].float(),
-                                    affine=image.affine)
-
-        img_array = preprocess(img_array, img_size=224, intensity=True)
-        inputs = img_array['data'][:, None, :, :, 0].to(device)
-
-        outputs = model(inputs)
-        outputs = torch.argmax(torch.softmax(outputs, dim=1), dim=1)
-
-        label_array = tio.LabelMap(tensor=outputs[:, :, :, None].cpu().long(), affine=img_array.affine)
-        label_array = preprocess(label_array, img_size=image.shape[1], intensity=False)
-
-        out = label_array['data'].squeeze().cpu().detach().numpy()
-        prediction[:, :, test_data_idx] = out
-
-    return prediction
+warnings.filterwarnings('ignore')
 
 
 def test(args):
-    # Set up dataset
-    images_folder = os.path.join(args.testing_data_path, "images")
-    masks_folder = os.path.join(args.testing_data_path, "masks")
-    images_paths = sorted([os.path.join(images_folder, f) for f in os.listdir(images_folder)])
-    masks_paths = sorted([os.path.join(masks_folder, f) for f in os.listdir(masks_folder)])
-    verify_segmentation_dataset(images_paths, masks_paths)
+    config.print_config()
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-    assert len(images_paths) == len(masks_paths), \
-        'number of images and number of masks do not match'.format(len(images_paths), len(masks_paths))
+    # load data
+    images = sorted(glob(os.path.join(args.testing_data_path, "images/*.nii.gz")))
+    segs = sorted(glob(os.path.join(args.testing_data_path, "masks/*.nii.gz")))
 
-    # Load the model
-    model = UNet().to(args.device)
-    msg = model.load_state_dict(torch.load(args.checkpoint_path))
-    print("model loaded", msg)
+    # define transforms for image and segmentation
+    imtrans = Compose(
+        [
+            LoadImage(image_only=True, ensure_channel_first=True),
+            ScaleIntensity(),
+            ResizeWithPadOrCrop(spatial_size=(args.img_size, args.img_size, -1))
+        ]
+    )
+    segtrans = Compose(
+        [
+            LoadImage(image_only=True, ensure_channel_first=True),
+            ScaleIntensity(),
+            ResizeWithPadOrCrop(spatial_size=(args.img_size, args.img_size, -1))
+        ]
+    )
 
-    # Set model to eval mode
+    test_ds = ArrayDataset(images, imtrans, segs, segtrans)
+
+    # sliding window inference for one image at every iteration
+    test_loader = DataLoader(test_ds, batch_size=1, num_workers=1)
+    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
+    post_trans = Compose([Activations(softmax=True), AsDiscrete(argmax=True, threshold=0.5)])
+
+    saver = SaveImage(output_dir="./data/testing_data_prediction", output_ext=".nii.gz", separate_folder=False,
+                      output_postfix="mask")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = UNet(
+        spatial_dims=2,
+        in_channels=1,
+        out_channels=2,
+        channels=(32, 64, 128, 256, 512),
+        strides=(2, 2, 2, 2),
+    ).to(device)
+
+    model.load_state_dict(torch.load(args.model_path))
     model.eval()
-
-    # Iterate over test data
     with torch.no_grad():
-        for idx in range(len(images_paths)):
-            predicted_mask = test_one_volume(model=model, input_volume_path=images_paths[idx], device=args.device)
-            actual_mask = tio.LabelMap(masks_paths[idx])
+        for test_data in test_loader:
+            test_images, test_labels = test_data[0].to(device), test_data[1].to(device)
 
-        if args.save_path:
-            os.makedirs(args.save_path, exist_ok=True)
-            save_name = os.path.basename(masks_paths[idx])
+            infer = SliceInferer(roi_size=(args.img_size, args.img_size), sw_batch_size=1, cval=-1, progress=True)
+            test_outputs = infer(test_images, model)
+            test_outputs = [post_trans(i) for i in decollate_batch(test_outputs)]
 
-            result_mask = tio.LabelMap(tensor=predicted_mask[None], affine=actual_mask.affine)
-
-            # write the image
-            result_mask.save(os.path.join(args.save_path, save_name))
-
-    return "Testing Finished!"
+            # compute metric for current iteration
+            dice_metric(y_pred=test_outputs, y=test_labels)
+            for val_output in test_outputs:
+                saver(val_output)
+        # aggregate the final mean dice result
+        print("evaluation metric:", dice_metric.aggregate().item())
+        # reset the status
+        dice_metric.reset()

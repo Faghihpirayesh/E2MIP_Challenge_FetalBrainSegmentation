@@ -1,22 +1,27 @@
-from train import train
 from test import test
+from train import train
+
 
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--epochs', default=50, type=int)
-parser.add_argument('--batch_size', default=16, type=int)
 parser.add_argument('--device', type=str, default="cuda:1", help="Set the device to run the program")
 parser.add_argument('--training_data_path', type=str, help="Set the path to training dataset")
 parser.add_argument('--testing_data_path', type=str, help="Set the path to testing data (for internal testing")
+parser.add_argument('--epochs', default=50, type=int)
+parser.add_argument('--batch_size', default=16, type=int)
 parser.add_argument('--lr', default=0.1, type=float, help="Learning rate")
+parser.add_argument('--num_classes', type=int, default=2, help="Number of classes / number of output layers")
+parser.add_argument('--img_size', type=int, default=256, help='input patch size of network input')
 parser.add_argument('--train', type=bool, default=False, help="Use True for training")
 parser.add_argument('--test', type=bool, default=False, help="Use True for testing")
 parser.add_argument('--model_path', type=str, help="Set the path of the model to be tested")
-parser.add_argument('--num_classes', type=int, default=2, help="Number of classes / number of output layers")
 args = parser.parse_args()
 print(args)
 
+args.testing_data_path = './data/testing_data'
+args.test = True
+args.model_path = 'best_metric_model_segmentation2d_array.pth'
 if __name__ == '__main__':
 
     if args.train:
