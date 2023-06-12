@@ -19,9 +19,7 @@ parser.add_argument('--model_path', type=str, help="Set the path of the model to
 args = parser.parse_args()
 print(args)
 
-args.testing_data_path = './data/testing_data'
-args.test = True
-args.model_path = 'best_metric_model_segmentation2d_array.pth'
+
 if __name__ == '__main__':
 
     if args.train:
