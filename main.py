@@ -16,12 +16,12 @@ parser.add_argument('--img_size', type=int, default=256, help='input patch size 
 parser.add_argument('--train', type=bool, default=False, help="Use True for training")
 parser.add_argument('--test', type=bool, default=False, help="Use True for testing")
 parser.add_argument('--model_path', type=str, help="Set the path of the model to be tested")
+parser.add_argument('--test_save_path', type=str, help="Set the path to save data")
 args = parser.parse_args()
 print(args)
 
 
 if __name__ == '__main__':
-
     if args.train:
         if args.training_data_path is None:
             raise TypeError(

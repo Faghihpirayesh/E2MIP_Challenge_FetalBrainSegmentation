@@ -1,57 +1,109 @@
 # modified from "https://github.com/Project-MONAI/tutorials/blob/main/2d_segmentation/torch/unet_evaluation_array.py"
-import logging
 import os
-import sys
 from glob import glob
+import numpy as np
 
 import torch
 
 from monai import config
-from monai.data import ArrayDataset, decollate_batch, DataLoader
+import monai.transforms as tr
+from monai.data import decollate_batch, Dataset, DataLoader
 from monai.inferers import SliceInferer
 from monai.metrics import DiceMetric
 from monai.networks.nets import UNet
-from monai.transforms import Activations, AsDiscrete, Compose, LoadImage, SaveImage, ScaleIntensity, ResizeWithPadOrCrop
+from monai.transforms import Activations, AsDiscrete, Compose, LoadImage, SaveImage, ScaleIntensity, \
+    ResizeWithPadOrCrop, MapTransform, SaveImaged
 
 import warnings
 
 warnings.filterwarnings('ignore')
 
 
+class SliceWiseNormalizeIntensityd(MapTransform):
+    def __init__(self, keys, subtrahend=0.0, divisor=None, nonzero=True):
+        super().__init__(keys)
+        self.subtrahend = subtrahend
+        self.divisor = divisor
+        self.nonzero = nonzero
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            image = d[key]
+            for i in range(image.shape[-1]):
+                slice_ = image[..., i]
+                if self.nonzero:
+                    mask = slice_ > 0
+                    if np.any(mask):
+                        if self.subtrahend is None:
+                            slice_[mask] = slice_[mask] - slice_[mask].mean()
+                        else:
+                            slice_[mask] = slice_[mask] - self.subtrahend
+
+                        if self.divisor is None:
+                            slice_[mask] /= slice_[mask].std()
+                        else:
+                            slice_[mask] /= self.divisor
+
+                else:
+                    if self.subtrahend is None:
+                        slice_ = slice_ - slice_.mean()
+                    else:
+                        slice_ = slice_ - self.subtrahend
+
+                    if self.divisor is None:
+                        slice_ /= slice_.std()
+                    else:
+                        slice_ /= self.divisor
+
+                image[..., i] = slice_
+            d[key] = image
+        return d
+
+
 def test(args):
     config.print_config()
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+    test_transforms = tr.Compose(
+        [
+            tr.LoadImaged(keys=["image"]),
+            tr.EnsureChannelFirstd(keys=["image"]),
+            tr.Spacingd(keys="image", pixdim=(1.0, 1.0, -1.0), mode="bilinear"),
+            SliceWiseNormalizeIntensityd(keys=["image"], nonzero=True),
+            tr.ResizeWithPadOrCropd(keys="image", spatial_size=(args.img_size, args.img_size, -1)),
+        ]
+    )
 
     # load data
-    images = sorted(glob(os.path.join(args.testing_data_path, "images/*.nii.gz")))
-    segs = sorted(glob(os.path.join(args.testing_data_path, "masks/*.nii.gz")))
+    test_images = sorted(glob(os.path.join(args.testing_data_path, "*.nii.gz")))
+    test_files = [{"image": image_name} for image_name in test_images]
 
-    # define transforms for image and segmentation
-    imtrans = Compose(
+    test_dataset = Dataset(data=test_files, transform=test_transforms)
+    test_dataloader = DataLoader(test_dataset,
+                                 batch_size=1,
+                                 num_workers=0)
+
+    post_transforms = tr.Compose(
         [
-            LoadImage(image_only=True, ensure_channel_first=True),
-            ScaleIntensity(),
-            ResizeWithPadOrCrop(spatial_size=(args.img_size, args.img_size, -1))
+            tr.Invertd(
+                keys="pred",
+                transform=test_transforms,
+                orig_keys="image",
+                meta_keys="pred_meta_dict",
+                orig_meta_keys="image_meta_dict",
+                meta_key_postfix="meta_dict",
+                nearest_interp=False,
+                to_tensor=True,
+            ),
+            tr.Activationsd(keys="pred", softmax=True),
+            tr.AsDiscreted(keys="pred", argmax=True, to_onehot=None),
+            tr.RemoveSmallObjectsd(keys="pred", min_size=50, connectivity=1),
+            SaveImaged(keys="pred", meta_keys="pred_meta_dict", output_dir=args.test_save_path,
+                       separate_folder=False, output_postfix="maskpred", resample=False),
         ]
     )
-    segtrans = Compose(
-        [
-            LoadImage(image_only=True, ensure_channel_first=True),
-            ScaleIntensity(),
-            ResizeWithPadOrCrop(spatial_size=(args.img_size, args.img_size, -1))
-        ]
-    )
 
-    test_ds = ArrayDataset(images, imtrans, segs, segtrans)
-
-    # sliding window inference for one image at every iteration
-    test_loader = DataLoader(test_ds, batch_size=1, num_workers=1)
-    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False)
-    post_trans = Compose([Activations(softmax=True), AsDiscrete(argmax=True, threshold=0.5)])
-
-    saver = SaveImage(output_dir="./data/testing_data_prediction", output_ext=".nii.gz", separate_folder=False,
-                      output_postfix="mask")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = args.device
     model = UNet(
         spatial_dims=2,
         in_channels=1,
@@ -59,22 +111,16 @@ def test(args):
         channels=(32, 64, 128, 256, 512),
         strides=(2, 2, 2, 2),
     ).to(device)
-
     model.load_state_dict(torch.load(args.model_path))
-    model.eval()
+
+    inferer = SliceInferer(roi_size=(256, 256),
+                           spatial_dim=2,
+                           progress=False)
+
     with torch.no_grad():
-        for test_data in test_loader:
-            test_images, test_labels = test_data[0].to(device), test_data[1].to(device)
+        model.eval()
+        for i, test_data in enumerate(test_dataloader):
+            test_inputs = test_data["image"].to(device)
 
-            infer = SliceInferer(roi_size=(args.img_size, args.img_size), sw_batch_size=1, cval=-1, progress=True)
-            test_outputs = infer(test_images, model)
-            test_outputs = [post_trans(i) for i in decollate_batch(test_outputs)]
-
-            # compute metric for current iteration
-            dice_metric(y_pred=test_outputs, y=test_labels)
-            for val_output in test_outputs:
-                saver(val_output)
-        # aggregate the final mean dice result
-        print("evaluation metric:", dice_metric.aggregate().item())
-        # reset the status
-        dice_metric.reset()
+            test_data["pred"] = inferer(test_inputs, model)
+            test_data = [post_transforms(i) for i in decollate_batch(test_data)]
