@@ -22,49 +22,49 @@ The predictions need to be filed in the folder in a certain folder structure (se
 ### 2. Data for Challenge, Task 3:
 The folder structure of the training and testing data used for evaluating your code will look like the following:
 
-***important: The data in "training_data" folder are 2D slices with different resolutions and 
-The data in "testing_data" folder are 3D stacks with different resolutions**
-***Your saved predictions in "testing_data_prediction" are also corresponding stack prediction of "testing_data" **
+***important: The data in "train_slice" folder are 2D slices with different resolutions and 
+The data in "test_volume" folder are 3D stacks with different resolutions**
+***Your saved predictions in "test_volume_prediction" are also corresponding stack prediction of "test_volume" **
 
 ```bash
-training_data
+train_slice
 ├── images
-│   ├── img_0000.nii.gz
-│   ├── img_0001.nii.gz
-│   ├── img_0003.nii.gz
+│   ├── DWI_case0000_slice00.nii.gz
+    ...
+│   ├── FMRI_case0000_slice00.nii.gz
+    ...
+│   ├── T2W_case0000_slice00.nii.gz
     ...
 │   
 ├── masks
-│   ├── mask_0000.nii.gz
-│   ├── mask_0001.nii.gz
-│   ├── mask_0003.nii.gz
+│   ├── DWI_case0000_slice00_mask.nii.gz
+    ...
+│   ├── FMRI_case0000_slice00_mask.nii.gz
+    ...
+│   ├── T2W_case0000_slice00_mask.nii.gz
     ...
 ```
 
 
 ```bash
-testing_data
-├── images
-│   ├── img_0000.nii.gz
-│   ├── img_0001.nii.gz
-│   ├── img_0003.nii.gz
-    ...
-│   
-├── masks
-│   ├── mask_0000.nii.gz
-│   ├── mask_0001.nii.gz
-│   ├── mask_0003.nii.gz
-    ...
+test_volume
+├── DWI_case0008.nii.gz
+...
+├── FMRI_case0003.nii.gz
+...
+├── T2W_case0005.nii.gz
+...
 ```
 
 The folder structure of the segmentation predictions that your script should create from  "testing_data" should have the following structure:
 ```bash
-testing_data_prediction
-├── masks
-│   ├── img_0000_mask.nii.gz
-│   ├── img_0001_mask.nii.gz
-│   ├── img_0003_mask.nii.gz
-    ...
+test_volume_prediction
+├── DWI_case0008_maskpred.nii.gz
+...
+├── FMRI_case0003_maskpred.nii.gz
+...
+├── T2W_case0005_maskpred.nii.gz
+...
 ```
 
 #### 3. Sample Data
