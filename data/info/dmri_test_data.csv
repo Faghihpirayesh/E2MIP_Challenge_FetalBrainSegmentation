@@ -1,4 +1,0 @@
-image,label
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/1040s1_21_vol_0000.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/goodmask/1040s1_21_vol_0000_mask_final.nii.gz
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/0853s2_18_vol_0000.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/goodmask/0853s2_18_vol_0000_mask_final.nii.gz
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/0954s1_27_vol_0000.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/dmri_dataset/data/B0/goodmask/0954s1_27_vol_0000_mask_final.nii.gz

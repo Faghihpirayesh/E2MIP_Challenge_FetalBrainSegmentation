@@ -1,4 +1,0 @@
-image,label
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1107s1/rs-fMRI_120_time_pts_39/vol_0010.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1107s1/rs-fMRI_120_time_pts_39/vol_0010_mask_final.nii.gz
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1145s1/rs-fMRI_80_time_pts_61/vol_0010.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1145s1/rs-fMRI_80_time_pts_61/vol_0010_mask_final.nii.gz
-/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1193s1/rs-fMRI_80_time_pts_52/vol_0010.nii.gz,/home/ch229449/projects/FetalBrainMRI-Segmentation/fetal_brain_segmentation/datasets/fmri_dataset/dMRIs3D/f1193s1/rs-fMRI_80_time_pts_52/vol_0010_mask_final.nii.gz
