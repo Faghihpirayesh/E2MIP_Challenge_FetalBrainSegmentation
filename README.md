@@ -19,6 +19,9 @@ This repository contains:
 The predictions need to be filed in the folder in a certain folder structure (see 2. Data for Challenge)
 * Besides the performance metric also the energy consumption during training and evaluation is being measured
   and both determine the Challenge ranking.
+* Submissions for the E2MIP Challenge are now being accepted at https://cmt3.research.microsoft.com/E2MIP2023/. 
+* The deadline for final method submissions is September 17th. 
+Late submissions might be possible, but we cannot guarantee the execution of the submission.
 ### 2. Data for Challenge, Task 3:
 The folder structure of the training and testing data used for evaluating your code will look like the following:
 
