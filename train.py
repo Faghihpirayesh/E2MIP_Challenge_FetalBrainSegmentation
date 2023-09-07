@@ -20,13 +20,6 @@ warnings.filterwarnings('ignore')
 def train(args):
     monai.config.print_config()
 
-    # load data
-    images = sorted(glob(os.path.join(args.training_data_path, "images/*.nii.gz")))
-    labels = sorted(glob(os.path.join(args.training_data_path, "masks/*.nii.gz")))
-
-    files = [{"image": image_name, "label": label_name} for
-             image_name, label_name in zip(images, labels)]
-
     # define transforms for image and segmentation
     transformations = tr.Compose(
         [
@@ -35,19 +28,24 @@ def train(args):
             tr.Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, -1.0), mode=("bilinear", "nearest")),
             tr.SqueezeDimd(keys=["image", "label"], dim=-1, update_meta=True),
             tr.NormalizeIntensityd(keys=["image"], nonzero=True),
-            tr.ResizeWithPadOrCropd(keys=["image", "label"],
-                                    spatial_size=(args.img_size, args.img_size)),
+            tr.Resized(keys=["image", "label"], spatial_size=(args.img_size, args.img_size)),
         ]
     )
 
-    # create validation
-    random.shuffle(files)
-    n_split = int(0.8 * len(files))
-
-    train_ds = Dataset(data=files[:n_split], transform=transformations)
+    # load train data
+    train_images = sorted(glob(os.path.join(args.training_data_path, "images/*.nii.gz")))
+    train_labels = sorted(glob(os.path.join(args.training_data_path, "masks/*.nii.gz")))
+    train_files = [{"image": image_name, "label": label_name} for
+                   image_name, label_name in zip(train_images, train_labels)]
+    train_ds = Dataset(data=train_files, transform=transformations)
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=8)
 
-    val_ds = Dataset(data=files[-n_split:], transform=transformations)
+    # load validation data
+    validation_images = sorted(glob(os.path.join(args.validation_data_path, "images/*.nii.gz")))
+    validation_labels = sorted(glob(os.path.join(args.validation_data_path, "masks/*.nii.gz")))
+    validation_files = [{"image": image_name, "label": label_name} for
+                        image_name, label_name in zip(validation_images, validation_labels)]
+    val_ds = Dataset(data=validation_files, transform=transformations)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, num_workers=4)
 
     # define metrics
