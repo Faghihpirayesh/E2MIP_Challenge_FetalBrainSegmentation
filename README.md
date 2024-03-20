@@ -1,4 +1,4 @@
-# [E2MIP Challenge](https://e2mip.github.io/), MICCAI 2023
+# [E2MIP Challenge](https://e2mip.github.io/), MICCAI 2024
 ## [Starting point for E2MIP challenge, task 3:](https://e2mip.org/overview/#task-3-segmentation-of-an-unknown-dataset-dataset-2)
 ## 2D Segmentation of an unknown dataset (fetal brain MRI)
 
